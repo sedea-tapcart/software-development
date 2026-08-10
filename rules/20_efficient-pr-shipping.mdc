@@ -265,7 +265,9 @@ This rule covers **chat output**, not just tool calls. After `git push`, do **no
 
 ## Worktree setup in plans
 
-Every multi-PR plan must end with a **Worktree setup** section containing copy-pasteable commands. Use the repo's directory name as a prefix for sibling worktree directories.
+Every multi-PR plan must end with a **Worktree setup** section containing copy-pasteable commands. Resolve **`WORKTREE_ROOT`** per [`.sedea/centers/sedea/rules/7_stacked-pr-worktree-naming.mdc`](.sedea/centers/sedea/rules/7_stacked-pr-worktree-naming.mdc) § *Worktree directory path (hosting repo)* — **do not substitute** paths directly under `dirname(HOSTING_ROOT)/` outside `{repo-basename}-worktrees/`.
+
+**Path formula is normative in rule 7 § *Worktree directory path (hosting repo)* — do not substitute.**
 
 **Normative path (Mission Control and `coding-session`):** center **`worktree-setup.sh`** from **`HOSTING_ROOT`**, then MCP attach when the setup JSON hint reports **`nextAction: attach-required`**. **Forbidden on the default path:** inline **`git worktree add`**, **`sedea_add_worktree_folder`** before setup exits **0**, and default-path inline **`worktree-bootstrap`**. See [`coding-session/SKILL.md`](../missions/plan-and-deliver/skills/coding-session/SKILL.md) § *Generic flow (single repo)* and § *Center worktree scripts (binding)*.
 
@@ -273,8 +275,12 @@ Canonical form for creating a worktree with a new worktree name:
 
 ```bash
 HOSTING_ROOT="<absolute-hosting-root>"
-WORKTREE_ROOT="<absolute-sibling-path>"   # repo basename prefix per rule 7
+REPO_BASENAME="$(basename "$HOSTING_ROOT")"
+WORKTREES_DIR="$(dirname "$HOSTING_ROOT")/${REPO_BASENAME}-worktrees"
 WORKTREE_NAME="<worktree-name>"           # rule 7 / this rule § *Worktree naming*
+WORKTREE_DIR="${REPO_BASENAME}-$(echo "$WORKTREE_NAME" | tr '/' '-')"
+WORKTREE_ROOT="${WORKTREES_DIR}/${WORKTREE_DIR}"
+mkdir -p "$WORKTREES_DIR"
 BASE_REF="origin/main"
 
 "$HOSTING_ROOT/.sedea/centers/sedea/scripts/worktree-setup.sh" \
@@ -445,20 +451,29 @@ Example A — **hosting repo** (root contains `.sedea/centers/sedea/`; stacked P
 From the hosting repo root (directory containing `.sedea/`):
 
 HOSTING_ROOT="$(pwd)"
+REPO_BASENAME="$(basename "$HOSTING_ROOT")"
+WORKTREES_DIR="$(dirname "$HOSTING_ROOT")/${REPO_BASENAME}-worktrees"
 BASE_REF="origin/main"
+mkdir -p "$WORKTREES_DIR"
 
 # Independent — start immediately (stack index + slug; default prefix feat)
+WORKTREE_NAME="feat/01-token-auth"
+WORKTREE_DIR="${REPO_BASENAME}-$(echo "$WORKTREE_NAME" | tr '/' '-')"
+WORKTREE_ROOT="${WORKTREES_DIR}/${WORKTREE_DIR}"
 "$HOSTING_ROOT/.sedea/centers/sedea/scripts/worktree-setup.sh" \
   --hosting-root "$HOSTING_ROOT" \
-  --worktree-path "$(cd .. && pwd)/app-feat-01-token-auth" \
-  --worktree-name "feat/01-token-auth" \
+  --worktree-path "$WORKTREE_ROOT" \
+  --worktree-name "$WORKTREE_NAME" \
   --base-ref "$BASE_REF"
 # Mission Control: sedea_add_worktree_folder — absolute path when attach-required
 
+WORKTREE_NAME="improve/02-logger"
+WORKTREE_DIR="${REPO_BASENAME}-$(echo "$WORKTREE_NAME" | tr '/' '-')"
+WORKTREE_ROOT="${WORKTREES_DIR}/${WORKTREE_DIR}"
 "$HOSTING_ROOT/.sedea/centers/sedea/scripts/worktree-setup.sh" \
   --hosting-root "$HOSTING_ROOT" \
-  --worktree-path "$(cd .. && pwd)/app-improve-02-logger" \
-  --worktree-name "improve/02-logger" \
+  --worktree-path "$WORKTREE_ROOT" \
+  --worktree-name "$WORKTREE_NAME" \
   --base-ref "$BASE_REF"
 
 # Depends on PR 1 — after feat/01-token-auth merges
@@ -476,30 +491,43 @@ Example B — **hosting repo** (e.g. `user-auth`; no two-digit stack index unles
 ## Worktree setup
 
 HOSTING_ROOT="$(pwd)"
+REPO_BASENAME="$(basename "$HOSTING_ROOT")"
+WORKTREES_DIR="$(dirname "$HOSTING_ROOT")/${REPO_BASENAME}-worktrees"
 BASE_REF="origin/main"
+mkdir -p "$WORKTREES_DIR"
 
+WORKTREE_NAME="improve/logger"
+WORKTREE_DIR="${REPO_BASENAME}-$(echo "$WORKTREE_NAME" | tr '/' '-')"
+WORKTREE_ROOT="${WORKTREES_DIR}/${WORKTREE_DIR}"
 "$HOSTING_ROOT/.sedea/centers/sedea/scripts/worktree-setup.sh" \
   --hosting-root "$HOSTING_ROOT" \
-  --worktree-path "$(cd .. && pwd)/user-auth-improve-logger" \
-  --worktree-name "improve/logger" \
+  --worktree-path "$WORKTREE_ROOT" \
+  --worktree-name "$WORKTREE_NAME" \
   --base-ref "$BASE_REF"
 # sedea_add_worktree_folder — absolute path when attach-required
 
+WORKTREE_NAME="feat/token-auth"
+WORKTREE_DIR="${REPO_BASENAME}-$(echo "$WORKTREE_NAME" | tr '/' '-')"
+WORKTREE_ROOT="${WORKTREES_DIR}/${WORKTREE_DIR}"
 "$HOSTING_ROOT/.sedea/centers/sedea/scripts/worktree-setup.sh" \
   --hosting-root "$HOSTING_ROOT" \
-  --worktree-path "$(cd .. && pwd)/user-auth-feat-token-auth" \
-  --worktree-name "feat/token-auth" \
+  --worktree-path "$WORKTREE_ROOT" \
+  --worktree-name "$WORKTREE_NAME" \
   --base-ref "$BASE_REF"
 ```
 
 ## New worktree from `origin/main`
 
-Do **not** use **`git checkout -b`** on the primary hosting clone for implementation. Create a sibling worktree from **`HOSTING_ROOT`** via center setup:
+Do **not** use **`git checkout -b`** on the primary hosting clone for implementation. Create a worktree from **`HOSTING_ROOT`** via center setup (Rule 7 path under `{repo-basename}-worktrees/` — not a direct sibling of **`HOSTING_ROOT`**):
 
 ```bash
 HOSTING_ROOT="<absolute-hosting-root>"
-WORKTREE_ROOT="<absolute-path>"
+REPO_BASENAME="$(basename "$HOSTING_ROOT")"
+WORKTREES_DIR="$(dirname "$HOSTING_ROOT")/${REPO_BASENAME}-worktrees"
 WORKTREE_NAME="<worktree-name>"
+WORKTREE_DIR="${REPO_BASENAME}-$(echo "$WORKTREE_NAME" | tr '/' '-')"
+WORKTREE_ROOT="${WORKTREES_DIR}/${WORKTREE_DIR}"
+mkdir -p "$WORKTREES_DIR"
 
 "$HOSTING_ROOT/.sedea/centers/sedea/scripts/worktree-setup.sh" \
   --hosting-root "$HOSTING_ROOT" \
@@ -548,7 +576,7 @@ Break work down recursively until each piece is a **PR leaf**: one reviewable **
 
 ### Planning and validation (diagrams)
 
-For **multi-step or multi-PR** plans, include **at least one Mermaid diagram** (dependency order, data/control flow, or PR slice boundaries). A single trivial PR in one obvious place may omit a diagram. Sequence-heavy work can add a **numbered list** or **PR ↔ module** table alongside Mermaid; prefer Mermaid for **structure** because it renders in GitHub and in-editor. Safe-generation contract: [`.sedea/centers/sedea/docs/mermaid-authoring.md`](.sedea/centers/sedea/docs/mermaid-authoring.md) — opaque ids, sequence `Note` single-line (no `<br/>`), flowchart-only `<br/>` in quoted labels.
+For **multi-step or multi-PR** plans, include **at least one Mermaid diagram** (dependency order, data/control flow, or PR slice boundaries). A single trivial PR in one obvious place may omit a diagram. Sequence-heavy work can add a **numbered list** or **PR ↔ module** table alongside Mermaid; prefer Mermaid for **structure** because it renders in GitHub and in-editor. Safe-generation contract: [`.sedea/centers/sedea/docs/mermaid-authoring.md`](.sedea/centers/sedea/docs/mermaid-authoring.md) — opaque ids, sequence `Note` single-line (no `<br/>`, no bare `;`), sequence message labels without bare `;`, flowchart-only `<br/>` in quoted labels.
 
 After each decomposition step, make validation easy for the human: **(a)** diagram, **(b)** ordered leaves marked **independent** vs **depends on …** (see [Plan for independence](#plan-for-independence)), **(c)** explicit **out of scope**. Prefer validation before hosting repo worktrees spin up.
 
@@ -583,6 +611,17 @@ Every description starter (including on the first push in this cadence) should c
 - **Not in this PR** — deferrals, follow-ups, or parent-epic scope left out on purpose.
 - **Plan lineage (when applicable)** — one line with plan slug or path (e.g. `.sedea/operations/**/plans/<slug>.plan.md`) and, if useful, "see Mermaid in plan" so intent is not trapped in chat.
 - **Verification pointer** — how to confirm behavior (which tests or observable behavior); still no separate "test plan" essay.
+
+## Hosting-repo PR base branch (binding)
+
+When **`create-pr`** opens a PR on the **hosting repo** (or separate product repo worktree):
+
+1. Resolve **`<prBaseBranch>`** from inline **`baseRef`** — strip remote prefix (typically `origin/` → `main`).
+2. **`gh pr create`** **must** include **`--base "<prBaseBranch>" --head "<worktreeName>"`**. **Forbidden:** bare **`gh pr create`** without **`--base`**.
+3. **Pre-create self-check:** When **`gh api repos/<owner>/<repo> --jq .default_branch`** ≠ **`<prBaseBranch>`**, **`--base` is mandatory** (always safe to pass even when equal).
+4. Executable procedure: [`create-pr/SKILL.md`](../missions/plan-and-deliver/skills/create-pr/SKILL.md) § *`gh pr create` procedure (binding)*.
+
+**Center-repo PRs** (content in a **center git repository**): rule **20** does **not** apply — use [`.sedea/centers/sedea/rules/3_center.mdc`](.sedea/centers/sedea/rules/3_center.mdc) § *Center-repo worktree procedure* and **`development-process.md`** § *Center-repo PR base (binding)*.
 
 ## Worktree naming
 
