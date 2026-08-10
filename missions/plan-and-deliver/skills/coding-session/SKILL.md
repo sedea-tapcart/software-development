@@ -143,6 +143,7 @@ laneRules:
 warmUpRules:
   - ".sedea/centers/software-development/missions/plan-and-deliver/skills/README.md"
   - ".sedea/centers/software-development/rules/20_efficient-pr-shipping.mdc"
+  - ".sedea/centers/sedea/rules/7_stacked-pr-worktree-naming.mdc"
 ---
 
 # Coding session
@@ -173,6 +174,7 @@ Per [`.sedea/centers/sedea/docs/lane-manifest-contract.md`](.sedea/centers/sedea
 |------|---------|
 | `.sedea/centers/software-development/missions/plan-and-deliver/skills/README.md` | Spawn contracts, terminal stop, cap exceptions |
 | `.sedea/centers/software-development/rules/20_efficient-pr-shipping.mdc` | Worktree naming, ship chain, bootstrap |
+| `.sedea/centers/sedea/rules/7_stacked-pr-worktree-naming.mdc` | Normative `WORKTREES_DIR` / `WORKTREE_ROOT` path formula before setup |
 
 **Omitted from frontmatter (384 KiB spawn cap — runtime `Read`):** `plan.mdc`, `development-process.md` — load via **`inputs.targetPlanPath`** and explicit **`Read`** when ship-chain or procedure steps require them.
 
@@ -1089,8 +1091,12 @@ Run only **after** [Pre-worktree validation](#pre-worktree-validation-plan-compl
 
  ```bash
  HOSTING_ROOT="<absolute-hosting-root>"   # spawn inputs.repoPath or walk-up to .sedea/centers/sedea/
- WORKTREE_ROOT="<absolute-sibling-path>"   # repo basename prefix per rule 20
- WORKTREE_NAME="<worktree-name>"           # rule 7 / rule 20
+ REPO_BASENAME="$(basename "$HOSTING_ROOT")"
+ WORKTREES_DIR="$(dirname "$HOSTING_ROOT")/${REPO_BASENAME}-worktrees"
+ WORKTREE_NAME="<worktree-name>"           # rule 7 § Worktree directory path (hosting repo)
+ WORKTREE_DIR="${REPO_BASENAME}-$(echo "$WORKTREE_NAME" | tr '/' '-')"
+ WORKTREE_ROOT="${WORKTREES_DIR}/${WORKTREE_DIR}"
+ mkdir -p "$WORKTREES_DIR"
  BASE_REF="${baseRef:-origin/main}"
 
  "$HOSTING_ROOT/.sedea/centers/sedea/scripts/worktree-setup.sh" \
@@ -1841,16 +1847,26 @@ One informational line when auto-advancing (for example: *Submodule merge gate p
 
 **Exception — gate required:**
 
-USER_CHECKPOINT — submodule source not on center default branch, or inline promote hard stop.
+USER_CHECKPOINT — submodule source not on **`defaultBranch`**, inline promote hard stop, or scope ambiguous.
 
-Call **`mission_control_present_structured_choice`** when source is not on **`defaultBranch`**, promote fails, or scope is ambiguous. Recap must list affected **`centerSlug`** paths, intended SHA, remote tip, and blocker. **Forbidden:** opening hosting **`create-pr`** while this gate is **`required`** and incomplete; hand-waving N/A for built-in **`sedea`**.
+**Workflow invariant (binding):** Every hosting-repo ship chain merges **source-repo PR(s) first**, then runs inline **`promote-submodule-pin`** on the hosting gitlink, then hosting **`create-pr`**. **Forbidden:** manual-merge-only handoff; **forbidden:** presenting this gate without **`approve-merge-pr`** when an open mergeable source PR blocks the chain.
+
+Call **`mission_control_present_structured_choice`** when source is not on **`defaultBranch`**, promote fails, or scope is ambiguous. Recap must list each affected source repo, open PR URL/number (when present), intended SHA, remote **`defaultBranch`** tip, inspect summary (`mergeable`, CI rollup), and blocker. Cross-ref [rule **6** § *PR approve-merge structured choice*](.sedea/centers/sedea/rules/6_git-commit-push-gate.mdc) and § *Merge inspect procedure*. **Forbidden:** opening hosting **`create-pr`** while this gate is **`required`** and incomplete; hand-waving N/A for built-in **`sedea`**.
+
+Set **`defaultOptionId: approve-merge-pr`** when rule **6** inspect shows **`mergeable: MERGEABLE`** for the blocking source-repo PR and no blocking review/CI per inspect JSON.
 
 | Option id | Label (brief) | Agent action |
 |-----------|---------------|--------------|
-| `merge-source-first` | Merge center source PR first — retry gate | Developer merges submodule source; agent re-runs verify + promote |
+| `approve-merge-pr` | Approve and Merge PR | Rule **6** § *Merge inspect procedure* (`gh pr view` — `state`, `mergeable`, `mergeStateStatus`, `reviewDecision`, `statusCheckRollup`, `url`) then [Merge procedure](#merge-procedure) when mergeable — for **each open source-repo PR in scope** (center submodule repo **and** product **`app`** repo when its gitlink applies). After merge confirmed on **`defaultBranch`**, re-run source-on-main verify + inline **`promote-submodule-pin`** for affected **`centerSlug`**(s), then re-enter gate or auto-advance when complete. **Forbidden:** skip inspect; **forbidden:** prose telling developer to merge on GitHub instead of this pick. |
 | `retry-promote-pin` | Retry inline promote-submodule-pin | Re-run skill for failed **`centerSlug`** |
 | `defer-ship` | Defer hosting PR | Keep `continuationStatus: active`; no **`create-pr`** |
-| `more-details` | More details for option _ | Elaborate; re-ask |
+
+**Agent runtime — submodule merge gate (binding):**
+
+- When **`gh pr view`** on a blocking source-repo PR shows **`mergeable: MERGEABLE`**, **forbidden** manual-merge-only gates.
+- Inspect is **part of** the **`approve-merge-pr`** pick — not a separate modal row.
+- When multiple source repos block (center submodule + **`app`**), recap lists each PR; one gate cycle per blocking repo when sequential merge is required.
+- Calibration: AIR #27 / #28 — `incident_submodule_merge_gate_no_delegate_merge_*`
 
 **Honest attestation hook (binding):** Do **not** mark deploy steps complete or report submodule integration success when **`promote-submodule-pin`** was skipped, failed, or conflated with N/A. Record actual outcomes in `outputs.promoteSubmodulePinOutcomes` and pass them to inline **`deploy-walk`** — Staging test attestation uses **`verify-submodule-ship-attestation.mjs`** (strict SHA + outcome cross-check).
 
@@ -2761,7 +2777,7 @@ When approve or merge fails (auth, branch protection, failing checks, merge conf
 
 | Symptom | Action |
 |---------|--------|
-| `gh: not logged in` / auth error | Report; **`mission_control_present_structured_choice`**: retry after auth, defer, more-details |
+| `gh: not logged in` / auth error | Call MCP **`mission_control_start_interactive_terminal`** with `{ "preset": "github-cli-auth" }` (optional `"phase": "refresh-scopes"`); on resume re-check `gh auth status`. If still blocked, **`mission_control_present_structured_choice`**: retry after auth, defer, more-details. **Forbidden:** agent Shell / prose `gh auth login` when the preset exists. |
 | Checks pending | Offer **`--auto`** merge when allowed; else wait/retry/defer modal |
 | Merge conflict / not mergeable | Recap `gh pr view` reason; re-open [Post-create-pr handoff gate](#post-create-pr-handoff-gate) or defer |
 | Already merged | Set `outputs.prState: merged`; run [Post-merge Checkpoint chain](#post-merge-checkpoint-chain-binding) under Checkpoint trust, else skip to post-merge cleanup |
