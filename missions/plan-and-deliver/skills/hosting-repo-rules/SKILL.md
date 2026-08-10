@@ -170,7 +170,7 @@ flowchart LR
 | Pre-PR | [pre-pr-review](pre-pr-review/SKILL.md) **spawned** | Fresh reviewer lane before **`create-pr`** |
 | Ship | [create-pr](create-pr/SKILL.md) **inline** + rule **6** gate | **New** rules-only PR — never product PR head |
 | Review | [pr-review](.sedea/centers/sedea/skills/pr-review/SKILL.md) **inline** | Through terminal; **`apply-rule-updates`** for `.mdc` fixes |
-| Post-merge | [worktree-cleanup](.sedea/centers/sedea/skills/worktree-cleanup/SKILL.md) **inline** | Path A ownership on **this** lane |
+| Post-merge | [worktree-cleanup](.sedea/centers/sedea/skills/worktree-cleanup/SKILL.md) **inline** | Path A ownership on **this** lane; includes compose teardown when hosting helper exists |
 
 **Forbidden:** spawning **`coding-session`**; reusing product **`coding-session`** worktree; pushing to open product PR branch.
 
