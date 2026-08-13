@@ -1,16 +1,6 @@
 ---
-lastSyncedUpstreamSha: 9145914331a76af5073f88b48989d2ea2a5f7ddb
-entries:
-- commitSha: 66c831825e386f40fd80184aff885d43e325fb6c
-  capturedAt: '2026-08-13T21:25:00Z'
-  summary: Document compose teardown in inline worktree-cleanup invocations.
-  paths:
-  - missions/plan-and-deliver/skills/hosting-repo-rules/SKILL.md
-  - rules/20_efficient-pr-shipping.mdc
-- commitSha: b69bcd291f0f5465bb139edc0798e7a3c025be6c
-  capturedAt: '2026-08-13T21:25:00Z'
-  summary: Document compose teardown in inline worktree-cleanup invocations (#19)
-  paths: []
+lastSyncedUpstreamSha: 2a5ee1e351274353c703db0faba1955d1a3f4c0c
+entries: []
 history:
 - upstreamSha: 6d18e677c142d34e5acfe0b3adc0b4bcdd39eff2
   syncedAt: '2026-08-03T18:49:18Z'
@@ -18,3 +8,6 @@ history:
 - upstreamSha: 9145914331a76af5073f88b48989d2ea2a5f7ddb
   syncedAt: '2026-08-10T18:48:56Z'
   centerPrUrl: https://github.com/sedea-tapcart/software-development/pull/18
+- upstreamSha: 2a5ee1e351274353c703db0faba1955d1a3f4c0c
+  syncedAt: '2026-08-13T22:03:05Z'
+  centerPrUrl: https://github.com/sedea-tapcart/software-development/pull/20
