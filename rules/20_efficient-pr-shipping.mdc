@@ -692,11 +692,13 @@ After the developer picks **`approve-merge-pr`** (or an equivalent same-turn mer
    ```bash
    gh pr view <number> --json state,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url
    ```
-2. **Not mergeable** — when **`mergeable`** is not **`MERGEABLE`**, or rollup signals blocked CI, conflicts, or pending required checks: **stop**; do **not** run **`gh pr review --approve`** or **`gh pr merge`**. Offer retry / check CI / defer via structured choice on the invoker skill.
+2. **Not mergeable** — when **`mergeable`** is not **`MERGEABLE`**, or rollup signals blocked CI, conflicts, or pending required checks: **stop**; do **not** run **`gh pr review --approve`** or **`gh pr merge`** — **except** Cypress-only blockers on **`tapcart-merchant-dashboard`** PRs per § *tapcart-merchant-dashboard Cypress CI carve-out* below. Offer retry / check CI / defer via structured choice on the invoker skill.
 3. **Mergeable — approval not required** — run **`gh pr merge`** **only** — do **not** run **`gh pr review --approve`** first.
 4. **Mergeable — approval required** — run **`gh pr review --approve`**, then **`gh pr merge`**, in the **same act turn** after the structured-choice pick.
 
 Full algorithm and minimum signals: rule **6** § *Merge inspect procedure*.
+
+**tapcart-merchant-dashboard Cypress CI carve-out (binding):** On PRs targeting **`tapcartinc/tapcart-merchant-dashboard`**, agents **ignore Cypress check failures** for inline **`pr-review`** triage and approval-gated approve+merge on **`coding-session`** lanes — non-Cypress CI, merge conflicts, and unresolved **CHANGES_REQUESTED** remain blocking. Normative detail: **`pr-review/SKILL.md`** § *tapcart-merchant-dashboard Cypress CI carve-out*; **`coding-session/SKILL.md`** § *Inline PR review after PR creation*, [Checkpoint — auto-advance `approve-merge-pr`](#checkpoint--auto-advance-approve-merge-pr-binding), and [Merge procedure](#merge-procedure).
 
 **Checkpoint auto-advance:** when Checkpoint trust auto-advances past a merge modal (implicit **`delegate-merge-confirm`** or equivalent), the **inspect procedure still runs** before any **`gh`** mutate — auto-advance waives the modal, not inspect.
 
