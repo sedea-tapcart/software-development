@@ -2486,7 +2486,7 @@ Run only after the developer chooses **`start-pr-review`**, **`start-pr-review-d
 2. Run **`pr-review`** **Step 1** — the **`pr-review.mjs`** collection array from **`HOSTING_ROOT`** — as the **first GitHub-touching shell** in that turn.
 3. Run **`pr-review`** **Step 1b** — **`gh pr checks`** / **`gh run view`** CI introspection — immediately after Step 1 on the **same turn**.
 
-**PR-clear contract (binding):** Clearing the PR means comment reconciliation **and** required CI green (or explicit **`defer-ci`**). **`mergeDelegationReady`** requires **`ciStatus: passing`** or developer-deferred — not comment triage alone.
+**PR-clear contract (binding):** Clearing the PR means comment reconciliation **and** required CI green (or explicit **`defer-ci`**) — **after** Cypress exclusion on **`tapcart-merchant-dashboard`** PRs per **`pr-review`** § *tapcart-merchant-dashboard Cypress CI carve-out*. **`mergeDelegationReady`** requires **`ciStatus: passing`** or developer-deferred — not comment triage alone.
 
 **Forbidden:** generic `gh pr view --json reviews,comments`, `gh api`, or GraphQL substitutes before Step 1; prose *review the PR on GitHub* without opening the post-create-pr or disposition gate; external-wait prose that skips Step 1 when triage was requested; ending a turn in *waiting for PR review* mode without [Post-create-pr handoff gate](#post-create-pr-handoff-gate) or **`pr-review`** disposition gate when the developer must pick the next action.
 
@@ -2502,7 +2502,7 @@ Inline `pr-review` inputs come from coding-session state:
 The inline procedure:
 
 1. Collects PR review comments (Step 1) and CI/check status (Step 1b).
-2. Classifies each comment as `Must fix`, `Should fix`, `Rule-update required`, `Skipped`, or `Skipped → follow-up`; classifies failing required CI as **Must fix**.
+2. Classifies each comment as `Must fix`, `Should fix`, `Rule-update required`, `Skipped`, or `Skipped → follow-up`; classifies failing required CI as **Must fix** — **except** Cypress-scoped checks on **`tapcart-merchant-dashboard`** PRs per **`pr-review`** § *tapcart-merchant-dashboard Cypress CI carve-out*.
 3. **Commit/push gates (stacked):** **AskQuestion** and **20_efficient-pr-shipping** § *Review before commit* for approval before the next stage; **`git commit`** / **`git push`** only per **`.sedea/centers/sedea/rules/6_git-commit-push-gate.mdc`** when the user **same message** explicitly asks (*commit*, *push*, etc.). Workflow approval alone is not git consent.
 4. Applies only the approved fix scope — comment fixes, **`fix-ci-only`** CI remediation, or **`apply-rule-updates`** via [Post-review repo rules handoff](#post-review-repo-rules-handoff).
 5. Runs GitHub reconciliation only after approved fixes are committed/pushed, or immediately for skipped-only triage with no CI failures — **same assistant turn** as the push (rule **20** § *Commit and push cadence* step 3; **`pr-review`** § *Step 5 turn invariant*). Re-run Step 1b after push before treating CI as cleared.
@@ -2556,7 +2556,7 @@ Run on the **spawned coding-session lane** after inline **`pr-review`** complete
 
 ### Checkpoint — auto-advance `approve-merge-pr` (binding)
 
-Under Checkpoint trust, when **all** [Preconditions](#preconditions-all-required) pass **and** rule **6** § *Merge inspect procedure* (`gh pr view` minimum fields) shows **`mergeable: true`**, required checks **passing** (or explicitly deferred via prior **`pr-review`** **`defer-ci`** pick), and no unresolved **CHANGES_REQUESTED** after inline **`pr-review`** (when **`pr-review`** ran), **auto-advance** as if the developer picked **`approve-merge-pr`** — **no** **`mission_control_present_structured_choice`**.
+Under Checkpoint trust, when **all** [Preconditions](#preconditions-all-required) pass **and** rule **6** § *Merge inspect procedure* (`gh pr view` minimum fields) shows **`mergeable: true`**, required checks **passing** (or explicitly deferred via prior **`pr-review`** **`defer-ci`** pick), and no unresolved **CHANGES_REQUESTED** after inline **`pr-review`** (when **`pr-review`** ran), **auto-advance** as if the developer picked **`approve-merge-pr`** — **no** **`mission_control_present_structured_choice`**. On **`tapcart-merchant-dashboard`** PRs, **Cypress-only** inspect blockers per **`pr-review`** § *tapcart-merchant-dashboard Cypress CI carve-out* do **not** prevent auto-advance.
 
 When clean: one-line recap (PR #, checks, **`mergeDelegationReady`** or inspect summary), then run [Merge procedure](#merge-procedure) on the **next** turn. Developer naming **`defer-merge`** or **`rerun-pr-review`** in the **same** message forces the modal below.
 
@@ -2566,7 +2566,7 @@ USER_CHECKPOINT — authorize agent-delegated PR approve and merge on this lane.
 
 **Exception — gate required:** When inspect finds blockers (`mergeable: false`, pending required checks, unresolved **CHANGES_REQUESTED**), or Checkpoint auto-advance does **not** apply, **stop** on **this turn** — call **`mission_control_present_structured_choice`** (`modalTitle`: *Coding session — merge PR?*) **before** `gh pr review --approve` or `gh pr merge`.
 
-**Inspect first (same turn, before modal or auto-advance Act):** rule **6** § *Merge inspect procedure* — `gh pr view <n> --json state,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url`. When `mergeable` is **false**, required checks are **pending**, or an unresolved **CHANGES_REQUESTED** review remains after **`pr-review`**, **stop** and open **`mission_control_present_structured_choice`** with retry / check CI / defer — do **not** offer **`approve-merge-pr`**, **`delegate-merge-confirm`**, or auto-advance until blockers clear.
+**Inspect first (same turn, before modal or auto-advance Act):** rule **6** § *Merge inspect procedure* — `gh pr view <n> --json state,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url`. When `mergeable` is **false**, required checks are **pending**, or an unresolved **CHANGES_REQUESTED** review remains after **`pr-review`**, **stop** and open **`mission_control_present_structured_choice`** with retry / check CI / defer — do **not** offer **`approve-merge-pr`**, **`delegate-merge-confirm`**, or auto-advance until blockers clear — **except** Cypress-only rollup failures on **`tapcart-merchant-dashboard`** PRs per **`pr-review`** § *tapcart-merchant-dashboard Cypress CI carve-out*.
 
 ```json
 {
@@ -2623,7 +2623,7 @@ USER_CHECKPOINT — authorize agent-delegated PR approve and merge on this lane.
 Run only after **`approve-merge-pr`** or **`delegate-merge-confirm`** at [Pre-merge authorization gate](#pre-merge-authorization-gate), post-create **`approve-merge-pr`** inspect act, or when blockers were cleared and the developer re-confirms merge on a later gate pick.
 
 1. **Re-inspect PR** — rule **6** § *Merge inspect procedure*: `gh pr view <n> --json state,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url`.
-2. **Blockers** — When `mergeable` is **false**, required checks are **pending**, or an unresolved **CHANGES_REQUESTED** review remains, **stop** and open **`mission_control_present_structured_choice`** with retry / check CI / defer — do **not** guess merge success.
+2. **Blockers** — When `mergeable` is **false**, required checks are **pending**, or an unresolved **CHANGES_REQUESTED** review remains, **stop** and open **`mission_control_present_structured_choice`** with retry / check CI / defer — do **not** guess merge success — **except** Cypress-only blockers on **`tapcart-merchant-dashboard`** PRs per **`pr-review`** § *tapcart-merchant-dashboard Cypress CI carve-out* (proceed to steps 3–5).
 3. **Approve** — When inspect shows approval required per rule **6** § *Mergeable — approval required*: `gh pr review <n> --approve` (cwd any; uses authenticated **`gh`** identity). When inspect shows merge-only is sufficient, **skip** approve per rule **6** § *Mergeable — approval not required*.
 4. **Merge method** — Default **`--squash --delete-branch`**. When `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed` shows squash disabled, use the first allowed method (`merge` or `rebase`) and note the choice in recap.
 5. **Merge** — `gh pr merge <n> --squash --delete-branch` (adjust flags per step 4). When checks are still running and the repo allows it, you may use **`--auto`** instead of immediate merge — prefer **`--auto`** when status checks are pending but mergeable.

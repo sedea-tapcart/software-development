@@ -280,6 +280,21 @@ Skip silently when `resolve` exits non-zero (session has no plan) or when `pull_
 
 **Capture the resolved slug + full `planPath`** (or the lack thereof) for Step 3a. Edit that same `<slug>.plan.md` (sidecar `<slug>.state.yaml` sits beside it). Re-running `resolve` later only to recover the path wastes a shell call when **`targetPlanPath`** is already in inline context.
 
+### tapcart-merchant-dashboard Cypress CI carve-out (binding)
+
+When Step 0 resolves **`repo: tapcart-merchant-dashboard`** (or **`owner/repo`** is **`tapcartinc/tapcart-merchant-dashboard`**):
+
+| Rule | Behavior |
+|------|----------|
+| **Cypress check id** | Check **`name`** or **`workflow`** contains **`cypress`** (case-insensitive) |
+| **Step 1b** | Failing Cypress-scoped checks **do not** increment **`ciFailureCount`**, **do not** classify as **Must fix**, and **do not** set **`ciStatus: failing`** when **all** failing required checks are Cypress-scoped |
+| **Recap** | List ignored Cypress checks under *Informational — ignored per tapcart-merchant-dashboard Cypress policy*; record in **`outputs.cypressIgnoredFailures`** |
+| **Disposition** | When comment triage is clean and **`ciFailureCount === 0`** after exclusion → offer **`approve-merge-pr`** per normal green-CI rules |
+| **Approve-merge inspect** | When **`statusCheckRollup`** failures are **Cypress-only** on this repo → treat as non-blocking for agent merge; proceed after developer **`approve-merge-pr`** pick. Non-Cypress failures remain blocking |
+| **Terminal** | **`mergeDelegationReady: true`** allowed when **`ciFailureCount === 0`** after Cypress exclusion (even if Cypress checks still fail on GitHub) |
+
+**Forbidden:** treating Cypress failures on other repos as ignored; ignoring non-Cypress required CI on **`tapcart-merchant-dashboard`** PRs.
+
 ### Step 1 — Collect comments (`pr-review.mjs` only — no `gh` substitute)
 
 1. Use the resolved `owner`, `repo`, and `pull_number`.
@@ -298,13 +313,13 @@ Run **on the same turn as Step 1** after comment collection (cwd **`WORKTREE_ROO
 
 1. **`gh pr checks <pull_number> --json name,state,link,workflow,completedAt`** — list every check on the PR head commit.
 2. Classify each check:
-   - **`FAILURE`** / **`CANCELLED`** (required for merge) → **failing required CI** — count toward **`ciFailureCount`** and treat as **Must fix** in Step 3 (same blocking bar as comment **Must fix**).
+   - **`FAILURE`** / **`CANCELLED`** (required for merge) → **failing required CI** — count toward **`ciFailureCount`** and treat as **Must fix** in Step 3 (same blocking bar as comment **Must fix**) — **except** Cypress-scoped checks on **`tapcart-merchant-dashboard`** PRs per § *tapcart-merchant-dashboard Cypress CI carve-out*.
    - **`PENDING`** / **`IN_PROGRESS`** / **`QUEUED`** → note in recap; re-check after fixes or at next loop iteration.
    - **`SUCCESS`** / **`SKIPPED`** / neutral → no action unless the developer asks to investigate.
 3. For each **failing** check, fetch logs when useful: **`gh run view <run-id> --log-failed`** (from check `detailsUrl` / workflow run id when parseable) — summarize root cause in the Step 4 report.
 4. Record **`ciStatus`**: `passing` when no required failures; `failing` when **`ciFailureCount > 0`**; `pending` when required checks still running and none failed yet; `deferred` only after explicit developer **`defer-ci`** pick (see disposition gate).
 
-**Forbidden:** ignoring failing required CI while declaring **`prReviewStatus: terminal`** or **`mergeDelegationReady: true`**; treating green comment triage alone as PR-clear when checks still fail.
+**Forbidden:** ignoring failing required CI while declaring **`prReviewStatus: terminal`** or **`mergeDelegationReady: true`**; treating green comment triage alone as PR-clear when checks still fail — **except** Cypress-scoped failures on **`tapcart-merchant-dashboard`** PRs per § *tapcart-merchant-dashboard Cypress CI carve-out*.
 
 ### Step 2 — Filter out already-handled comments
 
@@ -328,7 +343,7 @@ For each **new** (not filtered in Step 2) comment, verify it against the **curre
 - **Skipped (no follow-up)** — issue is already fixed in the working tree, factually wrong, or pure noise (e.g. linter chatter the project doesn't enforce). Nothing to track.
 - **Skipped → follow-up** — issue is *valid* but *out of scope* for this PR's single concern. Strategy #6 forbids silently expanding the PR; propose a `## Follow-ups` bullet in Step 3a so the item isn't lost.
 
-**CI failures (from Step 1b):** Each **failing required check** is classified as **Must fix** — same blocking bar as comment **Must fix**. Include check name, workflow, and log summary in the Step 4 report alongside comment rows. When **`ciFailureCount > 0`** and all comment dispositions are **Skipped** variants, the disposition gate still offers CI fix paths (see Step **4** § *Build disposition options*).
+**CI failures (from Step 1b):** Each **failing required check** is classified as **Must fix** — same blocking bar as comment **Must fix** — **except** Cypress-scoped checks on **`tapcart-merchant-dashboard`** PRs per § *tapcart-merchant-dashboard Cypress CI carve-out*. Include check name, workflow, and log summary in the Step 4 report alongside comment rows. When **`ciFailureCount > 0`** and all comment dispositions are **Skipped** variants, the disposition gate still offers CI fix paths (see Step **4** § *Build disposition options*).
 
 Do **not** apply fixes yet. First report the classification; then open the Step **3b** gate (below) — **except** under Checkpoint auto-advance in Step **4** — do **not** end the turn with prose “wait for approval”.
 
@@ -457,7 +472,7 @@ Run on the **developer's response turn** when they pick **`approve-merge-pr`**:
    ```bash
    gh pr view <n> --json state,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,url
    ```
-2. **Not mergeable** — when **`mergeable`** is not **`MERGEABLE`**, or **`mergeStateStatus`** / **`statusCheckRollup`** indicates blocked CI, conflicts, or pending required checks: **stop**; do **not** run **`gh pr review --approve`** or **`gh pr merge`**. One-line recap of blockers; re-open the same gate with **`approve-merge-pr`** and **`merged-pr-proceed`** still listed — or offer retry / check CI / defer via structured choice when blockers need a separate pick.
+2. **Not mergeable** — when **`mergeable`** is not **`MERGEABLE`**, or **`mergeStateStatus`** / **`statusCheckRollup`** indicates blocked CI, conflicts, or pending required checks: **stop**; do **not** run **`gh pr review --approve`** or **`gh pr merge`** — **except** when blockers are **Cypress-only** on a **`tapcart-merchant-dashboard`** PR per § *tapcart-merchant-dashboard Cypress CI carve-out* (proceed to steps 3–4). One-line recap of blockers; re-open the same gate with **`approve-merge-pr`** and **`merged-pr-proceed`** still listed — or offer retry / check CI / defer via structured choice when blockers need a separate pick.
 3. **Mergeable — approval not required** — when inspect shows merge may proceed **without** a new approval from this actor (no blocking review requirement, no unresolved **`CHANGES_REQUESTED`**, branch policy allows merge without new **`gh pr review --approve`**): set **`outputs.mergeDelegationAuthorized: true`** on the invoker lane; run **`coding-session`** [Merge procedure](../coding-session/SKILL.md#merge-procedure) **`gh pr merge`** path only — **do not** run **`gh pr review --approve`** first per rule **6** § *Mergeable — approval not required*.
 4. **Mergeable — approval required** — when inspect shows approval is required before merge: set **`outputs.mergeDelegationAuthorized: true`**; run **`coding-session`** [Merge procedure](../coding-session/SKILL.md#merge-procedure) — **`gh pr review --approve`** then **`gh pr merge`** in the **same act turn** after inspect passes.
 5. **Preconditions not met** — when inline triage is incomplete (**`mergeDelegationReady: false`**, open Must fixes, **`githubReconciliationStatus: pending`**, or **`ciStatus: failing`** without prior **`defer-ci`**): recap blockers; do **not** merge — re-open disposition or **`coding-session`** [Post-create-pr handoff gate](../coding-session/SKILL.md#post-create-pr-handoff-gate) as appropriate.
@@ -600,6 +615,7 @@ Return results through the active **`coding-session`** lane, not as a child-agen
 - `outputs.mergeDelegationReady`
 - `outputs.ciStatus` (`passing` · `failing` · `pending` · `deferred`)
 - `outputs.ciFailureCount`
+- `outputs.cypressIgnoredFailures` (array of `{ name, state, link, workflow }` — Cypress-scoped checks ignored on **`tapcart-merchant-dashboard`** PRs per § *tapcart-merchant-dashboard Cypress CI carve-out*)
 - `outputs.ciFailures` (array of `{ name, state, link, workflow }` from Step 1b)
 - `outputs.prState` / `outputs.mergeSha` / `outputs.mergedAt` when **`merged-pr-proceed`** confirms merge
 - `outputs.shipPhase` (`pr-review` or `pr-merged`)
