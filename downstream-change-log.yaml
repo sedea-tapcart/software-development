@@ -641,6 +641,11 @@ entries:
   summary: Ignore Cypress CI failures on tapcart-merchant-dashboard PR review/merge
     (#21)
   paths: []
+- commitSha: 9a4aecc483e88bcfda9ced4b7adbed7aa889e5f1
+  capturedAt: '2026-08-20T13:33:11-04:00'
+  summary: 'chore(change-log): capture 68 downstream commits since PR #20 sync'
+  paths:
+  - downstream-change-log.yaml
 history:
 - upstreamSha: 6d18e677c142d34e5acfe0b3adc0b4bcdd39eff2
   syncedAt: '2026-08-03T18:49:18Z'
